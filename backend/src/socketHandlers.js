@@ -46,6 +46,14 @@ function registerSocketHandlers(io, socket) {
             isHost: lobby.hostSocketId === socket.id,
         });
 
+        // If the game is already in progress, send the current board to the joining player
+        if (lobby.status === 'playing' && lobby.board) {
+            socket.emit('board:update', {
+                board: maskBoard(lobby.board),
+                startedAt: lobby.startedAt,
+            });
+        }
+
         // Broadcast updated player list to everyone in the room
         io.to(upperCode).emit('player:joined', {
             players: lobby.players.map(({ name, color }) => ({ name, color })),
