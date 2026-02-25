@@ -2,8 +2,8 @@
 
 const lobbies = new Map();
 
-// Player colors assigned in join order
-const PLAYER_COLORS = ['#EF4444', '#3B82F6', '#10B981', '#F59E0B'];
+// Player colors assigned in join order — names must match the frontend colorToBg() map
+const PLAYER_COLORS = ['coral', 'teal', 'purple', 'yellow'];
 
 /**
  * Generate a random 4-character alphanumeric code.
@@ -74,8 +74,16 @@ function removePlayer(socketId) {
         if (idx !== -1) {
             lobby.players.splice(idx, 1);
             if (lobby.players.length === 0) {
-                lobbies.delete(code);
-                return { code, lobby: null };
+                // Only delete immediately if the game hasn't started yet.
+                // If a game is in progress, keep the lobby alive — players may
+                // reconnect (e.g. navigating from lobby → game page creates a
+                // new socket and rejoins). The cleanup job will eventually
+                // remove it.
+                if (lobby.status === 'waiting') {
+                    lobbies.delete(code);
+                    return { code, lobby: null };
+                }
+                return { code, lobby };
             }
             // If the host left, assign the next player as host
             if (lobby.hostSocketId === socketId) {
