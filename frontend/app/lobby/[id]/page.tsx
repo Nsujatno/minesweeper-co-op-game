@@ -7,6 +7,7 @@ import { getSocket } from "@/lib/socket";
 import PlayerListBento from "@/components/lobby/PlayerListBento";
 import InviteCodeBento from "@/components/lobby/InviteCodeBento";
 import StartGameBento from "@/components/lobby/StartGameBento";
+import DifficultyBento, { type Difficulty } from "@/components/lobby/DifficultyBento";
 
 const PLAYER_COLOR_CLASSES: Record<string, string> = {
   coral: "bg-[#FF6B6B]",
@@ -28,51 +29,65 @@ export default function LobbyPage() {
 
   const [players, setPlayers] = useState<Player[]>([]);
   const [isHost, setIsHost] = useState(false);
+  const [difficulty, setDifficulty] = useState<Difficulty>("medium");
 
   useEffect(() => {
     const socket = getSocket();
     const storedName = sessionStorage.getItem("playerName") ?? "Player";
 
-    // ── Named handlers so we can remove exactly these (not all listeners) ──
-    const onLobbyState = ({ players: p, isHost: h }: { players: Player[]; isHost: boolean; status: string }) => {
+    const onLobbyState = ({
+      players: p,
+      isHost: h,
+      difficulty: d,
+    }: {
+      players: Player[];
+      isHost: boolean;
+      status: string;
+      difficulty: Difficulty;
+    }) => {
       setPlayers(p);
       setIsHost(h);
+      if (d) setDifficulty(d);
     };
+
     const onPlayerJoined = ({ players: p }: { players: Player[] }) => setPlayers(p);
     const onPlayerLeft = ({ players: p }: { players: Player[] }) => setPlayers(p);
     const onGameStart = () => router.push(`/game/${lobbyCode}`);
+    const onDifficultyChanged = ({ difficulty: d }: { difficulty: Difficulty }) => setDifficulty(d);
 
-    // The connect handler fires if the socket disconnects and reconnects
     const onConnect = () => {
       socket.emit("lobby:join", { code: lobbyCode, name: storedName });
     };
 
-    // Register listeners FIRST — before any emit — so we never miss a response
     socket.on("lobby:state", onLobbyState);
     socket.on("player:joined", onPlayerJoined);
     socket.on("player:left", onPlayerLeft);
     socket.on("game:start", onGameStart);
+    socket.on("lobby:difficultyChanged", onDifficultyChanged);
     socket.on("connect", onConnect);
 
-    // Emit lobby:join now if already connected; the connect handler covers the other case
     if (socket.connected) {
       socket.emit("lobby:join", { code: lobbyCode, name: storedName });
     }
 
     return () => {
-      // Remove only THIS mount's handlers — not every listener on these events
       socket.off("lobby:state", onLobbyState);
       socket.off("player:joined", onPlayerJoined);
       socket.off("player:left", onPlayerLeft);
       socket.off("game:start", onGameStart);
+      socket.off("lobby:difficultyChanged", onDifficultyChanged);
       socket.off("connect", onConnect);
-      // Do NOT disconnect — the singleton socket must survive navigation to /game
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lobbyCode]);
 
   const handleStartGame = () => {
     getSocket().emit("game:start", { code: lobbyCode });
+  };
+
+  const handleDifficultySelect = (d: Difficulty) => {
+    setDifficulty(d); // optimistic update
+    getSocket().emit("lobby:setDifficulty", { code: lobbyCode, difficulty: d });
   };
 
   const displayPlayers = players.map((p) => ({
@@ -99,10 +114,17 @@ export default function LobbyPage() {
           transition={{ type: "spring", bounce: 0.4, duration: 0.8 }}
           className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
         >
-          <div className="lg:col-span-2">
+          {/* Left: player list */}
+          <div className="lg:col-span-2 flex flex-col gap-6">
             <PlayerListBento players={displayPlayers} />
+            <DifficultyBento
+              selected={difficulty}
+              isHost={isHost}
+              onSelect={handleDifficultySelect}
+            />
           </div>
 
+          {/* Right: invite code + start */}
           <div className="flex flex-col gap-6">
             <InviteCodeBento code={lobbyCode} />
             <div className="flex-1">

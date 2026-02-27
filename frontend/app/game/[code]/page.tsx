@@ -10,7 +10,6 @@ import MinesweeperBoard from "@/components/game/MinesweeperBoard";
 import GameOverOverlay from "@/components/game/GameOverOverlay";
 import { CellData } from "@/components/game/MineCell";
 
-const MINE_COUNT = 40;
 
 interface Player {
     name: string;
@@ -39,10 +38,14 @@ export default function GamePage() {
     const [cursors, setCursors] = useState<RemoteCursor[]>([]);
     const [gameResult, setGameResult] = useState<"win" | "loss" | null>(null);
     const [finalTime, setFinalTime] = useState(0);
+    const [mineCount, setMineCount] = useState(40);
 
     const flagCount = board.flat().filter((c) => c.flagged).length;
-    const minesLeft = MINE_COUNT - flagCount;
+    const minesLeft = mineCount - flagCount;
     const isGameOver = gameResult !== null;
+    // Derive aspect ratio from actual board dimensions so it's always correct
+    const boardCols = board[0]?.length ?? 16;
+    const boardRows = board.length ?? 16;
 
     useEffect(() => {
         const socket = getSocket();
@@ -54,11 +57,17 @@ export default function GamePage() {
             if (status === "waiting") router.replace(`/lobby/${lobbyCode}`);
         };
 
-        const onGameStart = ({ board: b, players: p }: { board: CellData[][]; players: Player[] }) => {
+        const onGameStart = ({ board: b, players: p, mineCount: mc }: { board: CellData[][]; players: Player[]; mineCount?: number }) => {
             setBoard(b);
             setPlayers(p);
             setStartedAt(null);
+            if (mc != null) setMineCount(mc);
+            // Dismiss the overlay if this player didn't click Play Again
+            setGameResult(null);
+            setCursors([]);
         };
+
+
 
         const onBoardUpdate = ({ board: b, startedAt: sa }: { board: CellData[][]; startedAt: number | null }) => {
             setBoard(b);
@@ -129,28 +138,16 @@ export default function GamePage() {
     };
 
     return (
-        <main className="h-screen overflow-hidden flex flex-col items-center px-4 pt-3 pb-4 gap-3">
-            {/* Nav */}
-            <motion.div
-                className="w-full max-w-5xl flex items-center flex-shrink-0"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-            >
-                <button
-                    onClick={handleGoHome}
-                    className="flex items-center gap-2 font-heading font-bold text-[#2C2C2C] hover:text-[#FF6B6B] transition-colors text-lg"
-                >
-                    ← MineSweep Together
-                </button>
-            </motion.div>
+        <main className="h-screen overflow-hidden flex flex-col items-center px-4 pt-2 pb-3 gap-2">
 
-            {/* HUD */}
+            {/* HUD — contains back button + mine counter + timer + players */}
             <div className="w-full max-w-5xl flex-shrink-0">
                 <GameHUD
                     minesLeft={minesLeft}
                     startedAt={startedAt}
                     players={players}
                     lobbyCode={lobbyCode}
+                    onGoHome={handleGoHome}
                 />
             </div>
 
@@ -159,7 +156,7 @@ export default function GamePage() {
                 <motion.div
                     style={{
                         height: "100%",
-                        aspectRatio: "1 / 1",
+                        aspectRatio: `${boardCols} / ${boardRows}`,
                         maxWidth: "100%",
                     }}
                     initial={{ scale: 0.92, opacity: 0 }}
@@ -177,7 +174,7 @@ export default function GamePage() {
                 </motion.div>
             </div>
 
-            <GameOverOverlay result={gameResult} timeMs={finalTime} />
+            <GameOverOverlay result={gameResult} timeMs={finalTime} lobbyCode={lobbyCode} />
         </main>
     );
 }

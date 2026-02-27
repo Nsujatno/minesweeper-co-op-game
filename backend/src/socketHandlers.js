@@ -1,6 +1,6 @@
 'use strict';
 
-const { getLobby, addPlayer, removePlayer } = require('./lobbyStore');
+const { getLobby, addPlayer, removePlayer, DIFFICULTY_PRESETS } = require('./lobbyStore');
 const { generateBoard, revealCell, toggleFlag, checkWin, maskBoard } = require('./boardEngine');
 
 /**
@@ -17,7 +17,22 @@ function registerSocketHandlers(io, socket) {
 
         let lobby = getLobby(upperCode);
         if (!lobby) return socket.emit('error', { message: 'Lobby not found' });
-        if (lobby.status === 'finished') return socket.emit('error', { message: 'Game already finished' });
+        if (lobby.status === 'finished') {
+            // Only returning players can reset a finished lobby.
+            // Strangers who type the code after the game ends should be rejected.
+            const wasPlayer = lobby.players.find((p) => p.socketId === socket.id);
+            if (!wasPlayer) return socket.emit('error', { message: 'Game already finished' });
+
+            // Reset so the same group can play again
+            lobby.status = 'waiting';
+            lobby.board = null;
+            lobby.startedAt = null;
+
+            // If the original host socket isn't back yet, make this returning player the host
+            const hostStillPresent = lobby.players.some((p) => p.socketId === lobby.hostSocketId);
+            if (!hostStillPresent) lobby.hostSocketId = socket.id;
+        }
+
         if (lobby.players.length >= 4 && !lobby.players.find((p) => p.socketId === socket.id)) {
             return socket.emit('error', { message: 'Lobby is full' });
         }
@@ -43,6 +58,7 @@ function registerSocketHandlers(io, socket) {
             code: upperCode,
             players: lobby.players.map(({ name, color }) => ({ name, color })),
             status: lobby.status,
+            difficulty: lobby.difficulty,
             isHost: lobby.hostSocketId === socket.id,
         });
 
@@ -69,7 +85,8 @@ function registerSocketHandlers(io, socket) {
         if (lobby.players.length < 2) return socket.emit('error', { message: 'Need at least 2 players to start' });
         if (lobby.status !== 'waiting') return socket.emit('error', { message: 'Game already started' });
 
-        lobby.board = generateBoard();
+        const preset = DIFFICULTY_PRESETS[lobby.difficulty] ?? DIFFICULTY_PRESETS.medium;
+        lobby.board = generateBoard(preset.rows, preset.cols, preset.mineCount);
         lobby.status = 'playing';
         lobby.startedAt = null; // timer starts on first cell reveal
 
@@ -77,10 +94,24 @@ function registerSocketHandlers(io, socket) {
             board: maskBoard(lobby.board),
             startedAt: null,
             players: lobby.players.map(({ name, color }) => ({ name, color })),
+            mineCount: preset.mineCount,
+            difficulty: lobby.difficulty,
         });
     });
 
-    // ─── cell:reveal ─────────────────────────────────────────────────────────
+    // lobby:setDifficulty — host only, lobby must be waiting
+    socket.on('lobby:setDifficulty', ({ code, difficulty } = {}) => {
+        const upperCode = code?.toUpperCase();
+        const lobby = getLobby(upperCode);
+        if (!lobby) return;
+        if (lobby.hostSocketId !== socket.id) return;
+        if (lobby.status !== 'waiting') return;
+        if (!DIFFICULTY_PRESETS[difficulty]) return;
+        lobby.difficulty = difficulty;
+        io.to(upperCode).emit('lobby:difficultyChanged', { difficulty });
+    });
+
+    // cell:reveal
     // Payload: { code, row, col }
     socket.on('cell:reveal', ({ code, row, col } = {}) => {
         const lobby = getLobby(code?.toUpperCase());
