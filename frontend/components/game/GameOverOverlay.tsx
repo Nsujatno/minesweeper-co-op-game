@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import ActionButton from "@/components/ActionButton";
 import { useRouter } from "next/navigation";
@@ -18,6 +19,14 @@ function formatTime(ms: number): string {
 
 export default function GameOverOverlay({ result, timeMs }: GameOverOverlayProps) {
     const router = useRouter();
+    const [copied, setCopied] = useState(false);
+
+    const handleShareTime = async () => {
+        const text = `💣 I cleared MineSweep Together in ${formatTime(timeMs)}! Can you beat my time? minesweeptogether.com`;
+        await navigator.clipboard.writeText(text);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2500);
+    };
 
     return (
         <AnimatePresence>
@@ -33,8 +42,8 @@ export default function GameOverOverlay({ result, timeMs }: GameOverOverlayProps
 
                     <motion.div
                         className={`relative w-full max-w-sm p-8 border-4 border-b-8 border-[#2C2C2C] rounded-3xl flex flex-col items-center gap-5 text-center ${result === "win"
-                                ? "bg-[#4ECDC4]"
-                                : "bg-[#FF6B6B]"
+                            ? "bg-[#4ECDC4]"
+                            : "bg-[#FF6B6B]"
                             }`}
                         initial={{ y: 100, scale: 0.85, opacity: 0 }}
                         animate={{ y: 0, scale: 1, opacity: 1 }}
@@ -70,12 +79,22 @@ export default function GameOverOverlay({ result, timeMs }: GameOverOverlayProps
                             </span>
                         </div>
 
+                        {/* Share time — win only */}
+                        {result === "win" && (
+                            <button
+                                onClick={handleShareTime}
+                                className="w-full bg-[#FFE66D] border-4 border-b-6 border-[#2C2C2C] rounded-2xl py-3 px-6 font-heading font-black text-[#2C2C2C] text-lg hover:bg-[#ffd93d] active:scale-95 transition-all flex items-center justify-center gap-2"
+                            >
+                                {copied ? "✓ Copied to clipboard!" : "🔗 Share my time"}
+                            </button>
+                        )}
+
                         {/* Back to home */}
                         <ActionButton
                             variant="create"
                             label="Play Again 🚀"
                             onClick={() => router.push("/")}
-                            className="w-full mt-2"
+                            className="w-full"
                         />
                     </motion.div>
                 </motion.div>
