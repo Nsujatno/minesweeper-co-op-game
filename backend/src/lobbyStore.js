@@ -5,6 +5,13 @@ const lobbies = new Map();
 // Player colors assigned in join order — names must match the frontend colorToBg() map
 const PLAYER_COLORS = ['coral', 'teal', 'purple', 'yellow'];
 
+/** Board configuration per difficulty level */
+const DIFFICULTY_PRESETS = {
+    easy: { rows: 9, cols: 9, mineCount: 10, label: 'Easy', emoji: '🌱' },
+    medium: { rows: 16, cols: 16, mineCount: 40, label: 'Medium', emoji: '💣' },
+    hard: { rows: 20, cols: 20, mineCount: 80, label: 'Hard', emoji: '💀' },
+};
+
 /**
  * Generate a random 4-character alphanumeric code.
  * Retries if the code already exists.
@@ -27,6 +34,7 @@ function createLobby(hostSocketId, hostName) {
     const lobby = {
         code,
         status: 'waiting',
+        difficulty: 'medium',
         players: [{ socketId: hostSocketId, name: hostName, color: hostColor }],
         board: null,
         startedAt: null,
@@ -102,4 +110,4 @@ function allLobbies() {
     return lobbies.entries();
 }
 
-module.exports = { createLobby, getLobby, deleteLobby, addPlayer, removePlayer, allLobbies };
+module.exports = { createLobby, getLobby, deleteLobby, addPlayer, removePlayer, allLobbies, DIFFICULTY_PRESETS };

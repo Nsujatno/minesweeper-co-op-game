@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 interface GameOverOverlayProps {
     result: "win" | "loss" | null;
     timeMs: number;
+    lobbyCode: string;
 }
 
 function formatTime(ms: number): string {
@@ -17,7 +18,7 @@ function formatTime(ms: number): string {
     return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
 }
 
-export default function GameOverOverlay({ result, timeMs }: GameOverOverlayProps) {
+export default function GameOverOverlay({ result, timeMs, lobbyCode }: GameOverOverlayProps) {
     const router = useRouter();
     const [copied, setCopied] = useState(false);
 
@@ -89,11 +90,11 @@ export default function GameOverOverlay({ result, timeMs }: GameOverOverlayProps
                             </button>
                         )}
 
-                        {/* Back to home */}
+                        {/* Play Again — goes back to same lobby */}
                         <ActionButton
                             variant="create"
                             label="Play Again 🚀"
-                            onClick={() => router.push("/")}
+                            onClick={() => router.push(`/lobby/${lobbyCode}`)}
                             className="w-full"
                         />
                     </motion.div>

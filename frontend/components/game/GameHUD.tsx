@@ -13,6 +13,7 @@ interface GameHUDProps {
     startedAt: number | null;
     players: Player[];
     lobbyCode: string;
+    onGoHome: () => void;
 }
 
 function formatTime(ms: number): string {
@@ -33,7 +34,7 @@ function colorToBg(color: string): string {
     return map[color] ?? color;
 }
 
-export default function GameHUD({ minesLeft, startedAt, players, lobbyCode }: GameHUDProps) {
+export default function GameHUD({ minesLeft, startedAt, players, lobbyCode, onGoHome }: GameHUDProps) {
     const [elapsed, setElapsed] = useState(0);
 
     useEffect(() => {
@@ -49,13 +50,21 @@ export default function GameHUD({ minesLeft, startedAt, players, lobbyCode }: Ga
             initial={{ y: -40, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ type: "spring", bounce: 0.45 }}
-            className="w-full bg-[#FFE66D] border-4 border-b-8 border-[#2C2C2C] rounded-3xl px-5 py-4 flex items-center justify-between gap-4 flex-wrap"
+            className="w-full bg-[#FFE66D] border-4 border-b-8 border-[#2C2C2C] rounded-3xl px-4 py-2 flex items-center justify-between gap-4 flex-wrap"
         >
+            {/* Back button */}
+            <button
+                onClick={onGoHome}
+                className="font-heading font-black text-[#2C2C2C] hover:text-[#FF6B6B] transition-colors text-sm whitespace-nowrap flex items-center gap-1"
+            >
+                ← Home
+            </button>
+
             {/* Mine counter */}
             <div className="flex items-center gap-2">
-                <div className="bg-white border-4 border-[#2C2C2C] rounded-2xl px-4 py-2 flex items-center gap-2 min-w-[80px] justify-center">
-                    <span className="text-xl">💣</span>
-                    <span className="font-heading font-black text-2xl text-[#2C2C2C]">
+                <div className="bg-white border-4 border-[#2C2C2C] rounded-2xl px-3 py-1 flex items-center gap-2 min-w-[70px] justify-center">
+                    <span className="text-lg">💣</span>
+                    <span className="font-heading font-black text-xl text-[#2C2C2C]">
                         {minesLeft}
                     </span>
                 </div>
@@ -63,9 +72,9 @@ export default function GameHUD({ minesLeft, startedAt, players, lobbyCode }: Ga
 
             {/* Timer */}
             <div className="flex items-center gap-2">
-                <div className="bg-white border-4 border-[#2C2C2C] rounded-2xl px-4 py-2 flex items-center gap-2 min-w-[100px] justify-center">
-                    <span className="text-xl">⏱</span>
-                    <span className="font-heading font-black text-2xl text-[#2C2C2C] tabular-nums">
+                <div className="bg-white border-4 border-[#2C2C2C] rounded-2xl px-3 py-1 flex items-center gap-2 min-w-[90px] justify-center">
+                    <span className="text-lg">⏱</span>
+                    <span className="font-heading font-black text-xl text-[#2C2C2C] tabular-nums">
                         {startedAt ? formatTime(elapsed) : "00:00"}
                     </span>
                 </div>
@@ -79,13 +88,13 @@ export default function GameHUD({ minesLeft, startedAt, players, lobbyCode }: Ga
                             key={p.name}
                             title={p.name}
                             style={{ backgroundColor: colorToBg(p.color) }}
-                            className="w-8 h-8 rounded-full border-2 border-[#2C2C2C] flex items-center justify-center font-heading font-black text-sm text-[#2C2C2C]"
+                            className="w-7 h-7 rounded-full border-2 border-[#2C2C2C] flex items-center justify-center font-heading font-black text-xs text-[#2C2C2C]"
                         >
                             {p.name[0].toUpperCase()}
                         </div>
                     ))}
                 </div>
-                <div className="bg-[#2C2C2C] text-white font-heading font-black text-sm px-3 py-1 rounded-full tracking-widest">
+                <div className="bg-[#2C2C2C] text-white font-heading font-black text-xs px-3 py-1 rounded-full tracking-widest">
                     {lobbyCode}
                 </div>
             </div>
