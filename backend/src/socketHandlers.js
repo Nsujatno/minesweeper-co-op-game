@@ -191,6 +191,27 @@ function registerSocketHandlers(io, socket) {
         });
     });
 
+    // ─── chat:send ────────────────────────────────────────────────────────────
+    // Payload: { code, text }
+    socket.on('chat:send', ({ code, text } = {}) => {
+        const upperCode = code?.toUpperCase();
+        const lobby = getLobby(upperCode);
+        if (!lobby) return;
+
+        const player = lobby.players.find((p) => p.socketId === socket.id);
+        if (!player) return;
+
+        const trimmed = String(text ?? '').trim().slice(0, 200);
+        if (!trimmed) return;
+
+        io.to(upperCode).emit('chat:message', {
+            name: player.name,
+            color: player.color,
+            text: trimmed,
+            timestamp: Date.now(),
+        });
+    });
+
     // ─── disconnect ──────────────────────────────────────────────────────────
     socket.on('disconnect', () => {
         const result = removePlayer(socket.id);
